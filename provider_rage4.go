@@ -2,11 +2,12 @@ package main
 
 import (
   "errors"
+  "log"
   "os"
+  "github.com/anuaimi/rage4"
   "github.com/hashicorp/terraform/plugin"
   "github.com/hashicorp/terraform/helper/schema"
   "github.com/hashicorp/terraform/terraform"
-  "github.com/anuaimi/rage4"
 )
 
 // see if environment variable set for given variable
@@ -42,6 +43,9 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
   // create rage4 client to return to terraform
   client, err := rage4.NewClient( email, apiKey)
+  if client != nil {
+    log.Printf("[INFO] Rage4 client configured for user: %s", email)
+  }
 
   return client, err
 }
@@ -68,6 +72,10 @@ func main() {
             DefaultFunc: envDefaultFunc("RAGE4_API_AKEY"),
             Description: "Rage4 API Key",
           },
+        },
+
+        ResourcesMap: map[string]*schema.Resource{
+          "rage4_record": resourceRage4Record(),
         },
 
         ConfigureFunc: providerConfigure,
