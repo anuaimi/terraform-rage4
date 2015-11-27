@@ -68,7 +68,9 @@ func resourceRage4Record() *schema.Resource {
 func resourceRage4RecordCreate(d *schema.ResourceData, meta interface{}) error {
 
   // get id of domain we are going to add server to
-  domainId, err := strconv.Atoi(d.Get("domainId").(string))
+  value, _ := d.Get("domainId").(int)
+  log.Printf("[TRACE] domainId = %d", value)
+  domainId := value
 
   // create new A record
   newRecord := new(rage4.Record)

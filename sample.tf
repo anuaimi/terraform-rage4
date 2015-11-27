@@ -10,7 +10,4 @@ resource "rage4_record" "www" {
   name = "www"
   content = "192.168.1.1"
   type = "A"
-  priority = 1
-  active = "true"
-
 }
