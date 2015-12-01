@@ -3,9 +3,6 @@
 ## Overview
 This project is a plugin for Terraform, that allows it to work with the Rage4 DNS service.  When you use terraform to create servers on a cloud, you can also have it create a matching DNS entry on Rage4.
 
-## Status
-* provider is code complete but has not been tested
-
 ## Building
 ```
 go build -o terraform-provider-rage4
