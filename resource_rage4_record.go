@@ -16,8 +16,8 @@ func resourceRage4Record() *schema.Resource {
     Delete: resourceRage4RecordDelete,
 
     Schema: map[string]*schema.Schema{
-      "domainId": &schema.Schema{
-        Type:     schema.TypeInt,
+      "domain": &schema.Schema{
+        Type:     schema.TypeString,
         Required: true,
       },
       "name": &schema.Schema{
@@ -68,13 +68,28 @@ func resourceRage4Record() *schema.Resource {
 func resourceRage4RecordCreate(d *schema.ResourceData, meta interface{}) error {
 
   // get id of domain we are going to add server to
-  value, _ := d.Get("domainId").(int)
-  log.Printf("[TRACE] domainId = %d", value)
-  domainId := value
+  value, _ := d.Get("domain").(string)
+  log.Printf("[TRACE] domain = %s", value)
+  domain := value
+
+  // need to get domainId as that's what CreateRecord needs
+  client := meta.(*rage4.Client)
+  domainInfo, err := client.GetDomainByName(domain)
+  if (err != nil) {
+    fmt.Printf("[ERROR] could not find domain - %s", err)
+    return fmt.Errorf("Could not find domain - %s", err)
+  }
+
+  if domainInfo.Id == 0 {
+    fmt.Printf("[ERROR] domain Id = 0")
+    return fmt.Errorf("Domain id is 0")
+  } else {
+    log.Printf("[INFO] domain Id = %d", domainInfo.Id)
+  }
 
   // create new A record
   newRecord := new(rage4.Record)
-  newRecord.Name = d.Get("name").(string)
+  newRecord.Name = d.Get("name").(string) + "." + domainInfo.Name
   newRecord.Content = d.Get("content").(string)
   newRecord.Type = "A"
   // newRecord.TTL = d.Get("ttl")
@@ -82,15 +97,14 @@ func resourceRage4RecordCreate(d *schema.ResourceData, meta interface{}) error {
   log.Printf("[DEBUG] Rage4 Record create configuration: %#v", newRecord)
 
   // ask Rage4 to add A record to domain
-  client := meta.(*rage4.Client)
-  status, err := client.CreateRecord( domainId, *newRecord)
+  status, err := client.CreateRecord( domainInfo.Id, *newRecord)
   if (err != nil) {
     return fmt.Errorf("Failed to create Rage4 Record: %s", err)
   }
 
   // need to extract record id & save
   recId := status.Id
-  d.SetId(string(recId))
+  d.SetId(strconv.Itoa(recId))
   log.Printf("[INFO] created record ID: %s", d.Id())
 
   return nil
@@ -99,13 +113,20 @@ func resourceRage4RecordCreate(d *schema.ResourceData, meta interface{}) error {
 func resourceRage4RecordRead(d *schema.ResourceData, meta interface{}) error {
   // get which record we want to get details on
   recordId, err := strconv.Atoi(d.Id())
-  domainId, err := strconv.Atoi(d.Get("domainId").(string))
+  domain := d.Get("domain").(string)
 
-  log.Printf("[INFO] Reading Rage4 Record %d in domain %s", recordId, domainId)
+  log.Printf("[INFO] Reading Rage4 Record %d in domain %s", recordId, domain)
+
+  client := meta.(*rage4.Client)
+
+  domainInfo, err := client.GetDomainByName(domain)
+  if (err != nil) || (domainInfo.Id == 0){
+    fmt.Printf("[ERROR] could not find domain - %s", err)
+    return fmt.Errorf("Could not find domain - %s", err)
+  }
 
   // get details of records from Rage4
-  client := meta.(*rage4.Client)
-  _, err = client.GetRecords( domainId)
+  _, err = client.GetRecords( domainInfo.Id)
 
   return err
 }
@@ -113,9 +134,9 @@ func resourceRage4RecordRead(d *schema.ResourceData, meta interface{}) error {
 func resourceRage4RecordUpdate(d *schema.ResourceData, meta interface{}) error {
   // get which record we want to update
   recordId, err := strconv.Atoi(d.Id())
-  domainId, err := strconv.Atoi(d.Get("domainId").(string))
+  domain, err := strconv.Atoi(d.Get("domain").(string))
 
-  log.Printf("[INFO] Updating Rage4 Record %d in domain %s", recordId, domainId)
+  log.Printf("[INFO] Updating Rage4 Record %d in domain %s", recordId, domain)
 
   record := new(rage4.Record)
   record.Name = d.Get("name").(string)
@@ -132,9 +153,13 @@ func resourceRage4RecordUpdate(d *schema.ResourceData, meta interface{}) error {
 func resourceRage4RecordDelete(d *schema.ResourceData, meta interface{}) error {
   // get which domain we're working on
   recordId, err := strconv.Atoi(d.Id())
-  domainId := d.Get("domainId")
+  if (err != nil) {
+    return fmt.Errorf("Failed to get Rage4 record id: %s", err)
+  }
 
-  log.Printf("[INFO] Deleting Rage4 Record %d in domain %s", recordId, domainId)
+  domain := d.Get("domain")
+
+  log.Printf("[INFO] Deleting Rage4 Record %d in %s", recordId, domain)
 
   // ask rage4 to delete record
   client := meta.(*rage4.Client)
@@ -142,3 +167,4 @@ func resourceRage4RecordDelete(d *schema.ResourceData, meta interface{}) error {
 
   return err
 }
+
