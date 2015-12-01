@@ -6,7 +6,7 @@ provider "rage4" {
 
 # add www record to a domain
 resource "rage4_record" "www" {
-  domainId = "1"
+  domain = "blabla.com"
   name = "www"
   content = "192.168.1.1"
   type = "A"
